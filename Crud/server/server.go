@@ -39,7 +39,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 
 	// Prepare statement:
-	statement, err := db.Prepare("insert into users (name, email) values (?, ?)")
+	statement, err := db.Prepare("INSERT into users (name, email) values (?, ?)")
 	if err != nil {
 		w.Write([]byte("Error at creating statement"))
 	}
@@ -62,7 +62,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("User inserted! Id: %d", idInserted)))
 }
 
-// Find users (plural) from the database
+// Find users on the database
 func FindUsers(w http.ResponseWriter, r *http.Request) {
 	db, err := database.Connect()
 	if err != nil {
@@ -95,7 +95,7 @@ func FindUsers(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Find a specific user from the database
+// Find a specific user on the database
 func FindUser(w http.ResponseWriter, r *http.Request) {
 	parameters := mux.Vars(r)
 
@@ -129,4 +129,48 @@ func FindUser(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Error at converting user to JSON"))
 		return
 	}
+}
+
+// Update users on the database
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
+	parameters := mux.Vars(r)
+
+	ID, error := strconv.ParseUint(parameters["id"], 10, 32)
+	if error != nil {
+		w.Write([]byte("Error at converting parameter to int"))
+		return
+	}
+
+	requestBody, error := ioutil.ReadAll(r.Body)
+	if error != nil {
+		w.Write([]byte("Error at reading the request's body"))
+		return
+	}
+
+	var user user
+	if error := json.Unmarshal(requestBody, &user); error != nil {
+		w.Write([]byte("Error at converting user to struct"))
+		return
+	}
+
+	db, error := database.Connect()
+	if error != nil {
+		w.Write([]byte("Error at connecting with database"))
+		return
+	}
+	defer db.Close()
+
+	statement, error := db.Prepare("UPDATE users SET name = ?, email = ? WHERE id = ?")
+	if error != nil {
+		w.Write([]byte("Error at creating the statement for update"))
+		return
+	}
+	defer statement.Close()
+
+	if _, error := statement.Exec(user.Name, user.Email, ID); error != nil {
+		w.Write([]byte("Error at updating the user"))
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
