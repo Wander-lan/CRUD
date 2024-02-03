@@ -41,7 +41,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	// Prepare statement:
 	statement, err := db.Prepare("INSERT into users (name, email) values (?, ?)")
 	if err != nil {
-		w.Write([]byte("Error at creating statement"))
+		w.Write([]byte("Error at creating statement for create"))
 	}
 	defer statement.Close()
 
@@ -168,6 +168,37 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	defer statement.Close()
 
 	if _, error := statement.Exec(user.Name, user.Email, ID); error != nil {
+		w.Write([]byte("Error at updating the user"))
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
+	parameters := mux.Vars(r)
+
+	ID, error := strconv.ParseUint(parameters["id"], 10, 32)
+	if error != nil {
+		w.Write([]byte("Error at converting parameter to int"))
+		return
+	}
+
+	db, error := database.Connect()
+	if error != nil {
+		w.Write([]byte("Error at connecting with database"))
+		return
+	}
+	defer db.Close()
+
+	statement, error := db.Prepare("DELETE FROM users WHERE id = ?")
+	if error != nil {
+		w.Write([]byte("Error at creating the statement for delete"))
+		return
+	}
+	defer statement.Close()
+
+	if _, error := statement.Exec(ID); error != nil {
 		w.Write([]byte("Error at updating the user"))
 		return
 	}
